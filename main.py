@@ -49,8 +49,10 @@ def run(opts, rng):
     # Train the model. Our experiments do not usually involve inference, so we simply terminate them after training.
     # Note: The seeded generator is not needed if random operations are not performed by numpy,
     # as global generators have been seeded as well.
-    for x in train(model, train_ds, val_ds, test_ds, rng, opts):
-        yield x # Simply pass values to the watchdog wrapper.
+    for (status, history, return_tags) in train(model, train_ds, val_ds, test_ds, rng, opts):
+        # Postpone end-of-training signaling, so that the process is not killed before saving results.
+        if status != "end":
+            yield (status, history, return_tags) # Simply pass values to the watchdog wrapper.
 
     if opts["save"]:
         op = "{}/{}".format(opts["prefix_path"], opts["output_path"])
@@ -68,6 +70,8 @@ def run(opts, rng):
         # Save results.
         with open("{}/{}_results.yml".format(op, filename), "w") as file:
             yaml.safe_dump({"history": history, "tags": return_tags}, file)
+
+    yield ("end", history, return_tags)
 
 
 if __name__ == "__main__":
